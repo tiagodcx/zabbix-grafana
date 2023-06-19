@@ -1,12 +1,13 @@
 version: '3.5'
 services:
  zabbix-server:
-  image: zabbix/zabbix-server-mysql:centos-4.0-latest
+  image: zabbix/zabbix-server-mysql:alpine-6.4-latest
   ports:
    - "10051:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
    - /etc/timezone:/etc/timezone:ro 
+#   - dbsocket:/var/run/mysqld/
    - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/dbscripts:/var/lib/zabbix/dbscripts:ro
@@ -37,6 +38,9 @@ services:
    - MYSQL_PASSWORD
    - MYSQL_ROOT_USER
    - MYSQL_ROOT_PASSWORD
+#   - client-key.pem
+#   - client-cert.pem
+#   - root-ca.pem
   depends_on:
    - mysql-server
   networks:
@@ -44,8 +48,8 @@ services:
      aliases:
       - zabbix-server
       - zabbix-server-mysql
-      - zabbix-server-centos-mysql
-      - zabbix-server-mysql-centos
+      - zabbix-server-alpine-mysql
+      - zabbix-server-mysql-alpine
    zbx_net_frontend:
 #  devices:
 #   - "/dev/ttyUSB0:/dev/ttyUSB0"
@@ -60,174 +64,19 @@ services:
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-server"
    com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "centos"
-
- zabbix-proxy-sqlite3:
-  image: zabbix/zabbix-proxy-sqlite3:centos-4.0-latest
-  profiles:
-   - all
-  ports:
-   - "10061:10051"
-  volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro 
-   - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
-   - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
-   - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
-   - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
-   - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-   - snmptraps:/var/lib/zabbix/snmptraps:rw
-  ulimits:
-   nproc: 65535
-   nofile:
-    soft: 20000
-    hard: 40000
-  deploy:
-   resources:
-    limits:
-      cpus: '0.70'
-      memory: 512M
-    reservations:
-      cpus: '0.3'
-      memory: 256M
-  env_file:
-   - ./env_vars/.env_prx
-   - ./env_vars/.env_prx_sqlite3
-  depends_on:
-   - zabbix-java-gateway
-   - zabbix-snmptraps
-  networks:
-   zbx_net_backend:
-    aliases:
-     - zabbix-proxy-sqlite3
-     - zabbix-proxy-centos-sqlite3
-     - zabbix-proxy-sqlite3-centos
-   zbx_net_frontend:
-  stop_grace_period: 30s
-  labels:
-   com.zabbix.description: "Zabbix proxy with SQLite3 database support"
-   com.zabbix.company: "Zabbix LLC"
-   com.zabbix.component: "zabbix-proxy"
-   com.zabbix.dbtype: "sqlite3"
-   com.zabbix.os: "centos"
-
- zabbix-proxy-mysql:
-  image: zabbix/zabbix-proxy-mysql:centos-4.0-latest
-  profiles:
-   - all
-  ports:
-   - "10071:10051"
-  volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
-   - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
-   - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
-   - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
-   - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
-   - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-   - snmptraps:/var/lib/zabbix/snmptraps:rw
-  ulimits:
-   nproc: 65535
-   nofile:
-    soft: 20000
-    hard: 40000
-  deploy:
-   resources:
-    limits:
-      cpus: '0.70'
-      memory: 512M
-    reservations:
-      cpus: '0.3'
-      memory: 256M
-  env_file:
-   - ./env_vars/.env_db_mysql_proxy
-   - ./env_vars/.env_prx
-   - ./env_vars/.env_prx_mysql
-  depends_on:
-   - mysql-server
-   - zabbix-java-gateway
-   - zabbix-snmptraps
-  secrets:
-   - MYSQL_USER
-   - MYSQL_PASSWORD
-   - MYSQL_ROOT_USER
-   - MYSQL_ROOT_PASSWORD
-  networks:
-   zbx_net_backend:
-    aliases:
-     - zabbix-proxy-mysql
-     - zabbix-proxy-centos-mysql
-     - zabbix-proxy-mysql-centos
-   zbx_net_frontend:
-  stop_grace_period: 30s
-  labels:
-   com.zabbix.description: "Zabbix proxy with MySQL database support"
-   com.zabbix.company: "Zabbix LLC"
-   com.zabbix.component: "zabbix-proxy"
-   com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "centos"
-
- zabbix-web-apache-mysql:
-  image: zabbix/zabbix-web-apache-mysql:centos-4.0-latest
-  profiles:
-   - all
-  ports:
-   - "8081:8080"
-   - "8443:8443"
-  volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
-   - ./zbx_env/etc/ssl/apache2:/etc/ssl/apache2:ro
-  deploy:
-   resources:
-    limits:
-      cpus: '0.70'
-      memory: 512M
-    reservations:
-      cpus: '0.5'
-      memory: 256M
-  env_file:
-   - ./env_vars/.env_db_mysql
-   - ./env_vars/.env_web
-  secrets:
-   - MYSQL_USER
-   - MYSQL_PASSWORD
-  depends_on:
-   - mysql-server
-   - zabbix-server
-  healthcheck:
-   test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-   interval: 10s
-   timeout: 5s
-   retries: 3
-   start_period: 30s
-  networks:
-   zbx_net_backend:
-    aliases:
-     - zabbix-web-apache-mysql
-     - zabbix-web-apache-centos-mysql
-     - zabbix-web-apache-mysql-centos
-   zbx_net_frontend:
-  stop_grace_period: 10s
-  sysctls:
-   - net.core.somaxconn=65535
-  labels:
-   com.zabbix.description: "Zabbix frontend on Apache web-server with MySQL database support"
-   com.zabbix.company: "Zabbix LLC"
-   com.zabbix.component: "zabbix-frontend"
-   com.zabbix.webserver: "apache2"
-   com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "centos"
+   com.zabbix.os: "alpine"
 
  zabbix-web-nginx-mysql:
-  image: zabbix/zabbix-web-nginx-mysql:centos-4.0-latest
+  image: zabbix/zabbix-web-nginx-mysql:alpine-6.4-latest
   ports:
    - "80:8080"
    - "443:8443"
   volumes:
    - /etc/localtime:/etc/localtime:ro
    - /etc/timezone:/etc/timezone:ro
+#   - dbsocket:/var/run/mysqld/
    - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
+   - ./zbx_env/usr/share/zabbix/modules/:/usr/share/zabbix/modules/:ro
   deploy:
    resources:
     limits:
@@ -242,11 +91,14 @@ services:
   secrets:
    - MYSQL_USER
    - MYSQL_PASSWORD
+#   - client-key.pem
+#   - client-cert.pem
+#   - root-ca.pem
   depends_on:
    - mysql-server
    - zabbix-server
   healthcheck:
-   test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+   test: ["CMD", "curl", "-f", "http://localhost:8080/ping"]
    interval: 10s
    timeout: 5s
    retries: 3
@@ -255,8 +107,8 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-web-nginx-mysql
-     - zabbix-web-nginx-centos-mysql
-     - zabbix-web-nginx-mysql-centos
+     - zabbix-web-nginx-alpine-mysql
+     - zabbix-web-nginx-mysql-alpine
    zbx_net_frontend:
   stop_grace_period: 10s
   sysctls:
@@ -267,10 +119,10 @@ services:
    com.zabbix.component: "zabbix-frontend"
    com.zabbix.webserver: "nginx"
    com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "centos"
+   com.zabbix.os: "alpine"
 
  zabbix-agent:
-  image: zabbix/zabbix-agent:centos-4.0-latest
+  image: zabbix/zabbix-agent:alpine-6.4-latest
   profiles:
    - full
    - all
@@ -301,16 +153,16 @@ services:
     aliases:
      - zabbix-agent
      - zabbix-agent-passive
-     - zabbix-agent-centos
+     - zabbix-agent-alpine
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix agent"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-agentd"
-   com.zabbix.os: "centos"
+   com.zabbix.os: "alpine"
 
  zabbix-java-gateway:
-  image: zabbix/zabbix-java-gateway:centos-4.0-latest
+  image: zabbix/zabbix-java-gateway:alpine-6.4-latest
   profiles:
    - full
    - all
@@ -330,16 +182,16 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-java-gateway
-     - zabbix-java-gateway-centos
+     - zabbix-java-gateway-alpine
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix Java Gateway"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "java-gateway"
-   com.zabbix.os: "centos"
+   com.zabbix.os: "alpine"
 
  zabbix-snmptraps:
-  image: zabbix/zabbix-snmptraps:centos-4.0-latest
+  image: zabbix/zabbix-snmptraps:alpine-6.4-latest
   profiles:
    - full
    - all
@@ -365,23 +217,65 @@ services:
    com.zabbix.description: "Zabbix snmptraps"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "snmptraps"
-   com.zabbix.os: "centos"
+   com.zabbix.os: "alpine"
+
+#  zabbix-web-service:
+#   image: zabbix/zabbix-web-service:alpine-6.4-latest
+#   profiles:
+#    - full
+#    - all
+#   ports:
+#    - "10053:10053"
+#   volumes:
+#    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+#   security_opt:
+#    - seccomp:./env_vars/chrome_dp.json
+#   deploy:
+#    resources:
+#     limits:
+#       cpus: '0.5'
+#       memory: 512M
+#     reservations:
+#       cpus: '0.25'
+#       memory: 256M
+#   env_file:
+#    - ./env_vars/.env_web_service
+#   networks:
+#    zbx_net_backend:
+#     aliases:
+#      - zabbix-web-service
+#      - zabbix-web-service-alpine
+#   stop_grace_period: 5s
+#   labels:
+#    com.zabbix.description: "Zabbix web service"
+#    com.zabbix.company: "Zabbix LLC"
+#    com.zabbix.component: "web-service"
+#    com.zabbix.os: "alpine"
 
  mysql-server:
-  image: mysql:8.0
+  image: mysql:8.0-oracle
   command:
    - mysqld
-   - --character-set-server=utf8
-   - --collation-server=utf8_bin
+   - --character-set-server=utf8mb4
+   - --collation-server=utf8mb4_bin
+   - --skip-character-set-client-handshake
    - --default-authentication-plugin=mysql_native_password
+#   - --require-secure-transport
+#   - --ssl-ca=/run/secrets/root-ca.pem
+#   - --ssl-cert=/run/secrets/server-cert.pem
+#   - --ssl-key=/run/secrets/server-key.pem
   volumes:
    - ./zbx_env/var/lib/mysql:/var/lib/mysql:rw
+#   - dbsocket:/var/run/mysqld/
   env_file:
    - ./env_vars/.env_db_mysql
   secrets:
    - MYSQL_USER
    - MYSQL_PASSWORD
    - MYSQL_ROOT_PASSWORD
+#   - server-key.pem
+#   - server-cert.pem
+#   - root-ca.pem
   stop_grace_period: 1m
   networks:
    zbx_net_backend:
@@ -429,6 +323,7 @@ networks:
 
 volumes:
   snmptraps:
+#  dbsocket:
 
 secrets:
   MYSQL_USER:
@@ -439,3 +334,13 @@ secrets:
     file: ./env_vars/.MYSQL_ROOT_USER
   MYSQL_ROOT_PASSWORD:
     file: ./env_vars/.MYSQL_ROOT_PASSWORD
+#  client-key.pem:
+#    file: ./env_vars/.ZBX_DB_KEY_FILE
+#  client-cert.pem:
+#    file: ./env_vars/.ZBX_DB_CERT_FILE
+#  root-ca.pem:
+#    file: ./env_vars/.ZBX_DB_CA_FILE
+#  server-cert.pem:
+#    file: ./env_vars/.DB_CERT_FILE
+#  server-key.pem:
+#    file: ./env_vars/.DB_KEY_FILE
